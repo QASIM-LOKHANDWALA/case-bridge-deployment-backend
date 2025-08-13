@@ -9,7 +9,7 @@ from lawyers.models import LawyerProfile
 from hire.models import Hire
 from .serializers import MessageSerializer
 from django.utils.dateparse import parse_datetime
-from utils.rag_model import get_legal_answer
+# from utils.rag_model import get_legal_answer
 
 from dotenv import load_dotenv
 import os
@@ -144,54 +144,54 @@ class ChatContactListView(APIView):
 
         return Response(contacts)
     
-class LegalBotInitConversationView(APIView):
-    permission_classes = [IsAuthenticated]
+# class LegalBotInitConversationView(APIView):
+#     permission_classes = [IsAuthenticated]
 
-    def post(self, request):
-        user = request.user
-        try:
-            bot_user = User.objects.get(email='legalbot@casebridge.com')
-        except User.DoesNotExist:
-            return Response({"error": "Bot user not found"}, status=500)
+#     def post(self, request):
+#         user = request.user
+#         try:
+#             bot_user = User.objects.get(email='legalbot@casebridge.com')
+#         except User.DoesNotExist:
+#             return Response({"error": "Bot user not found"}, status=500)
 
-        existing = Conversation.objects.filter(participants=user).filter(participants=bot_user)
-        for convo in existing:
-            if convo.participants.count() == 2:
-                return Response({"conversation_id": convo.id, "message": "Bot conversation already exists"})
+#         existing = Conversation.objects.filter(participants=user).filter(participants=bot_user)
+#         for convo in existing:
+#             if convo.participants.count() == 2:
+#                 return Response({"conversation_id": convo.id, "message": "Bot conversation already exists"})
 
-        conversation = Conversation.objects.create()
-        conversation.participants.add(user, bot_user)
-        return Response({"conversation_id": conversation.id, "message": "New bot conversation started"})
+#         conversation = Conversation.objects.create()
+#         conversation.participants.add(user, bot_user)
+#         return Response({"conversation_id": conversation.id, "message": "New bot conversation started"})
 
-class LegalBotView(APIView):
-    permission_classes = [IsAuthenticated]
+# class LegalBotView(APIView):
+#     permission_classes = [IsAuthenticated]
 
-    def post(self, request, conversation_id):
-        user_message = request.data.get('text')
-        if not user_message:
-            return Response({"error": "Message text required"}, status=400)
+#     def post(self, request, conversation_id):
+#         user_message = request.data.get('text')
+#         if not user_message:
+#             return Response({"error": "Message text required"}, status=400)
 
-        conversation = get_object_or_404(Conversation, id=conversation_id)
-        if request.user not in conversation.participants.all():
-            return Response({"error": "Not a participant of this conversation"}, status=403)
+#         conversation = get_object_or_404(Conversation, id=conversation_id)
+#         if request.user not in conversation.participants.all():
+#             return Response({"error": "Not a participant of this conversation"}, status=403)
 
-        user_msg = Message.objects.create(
-            conversation=conversation,
-            sender=request.user,
-            text=user_message
-        )
+#         user_msg = Message.objects.create(
+#             conversation=conversation,
+#             sender=request.user,
+#             text=user_message
+#         )
 
-        bot_reply = get_legal_answer(user_message)
+#         bot_reply = get_legal_answer(user_message)
 
-        bot_user = User.objects.get(email='legalbot@casebridge.com')
+#         bot_user = User.objects.get(email='legalbot@casebridge.com')
 
-        bot_msg = Message.objects.create(
-            conversation=conversation,
-            sender=bot_user,
-            text=bot_reply
-        )
+#         bot_msg = Message.objects.create(
+#             conversation=conversation,
+#             sender=bot_user,
+#             text=bot_reply
+#         )
 
-        return Response({
-            "user_message": MessageSerializer(user_msg).data,
-            "bot_reply": MessageSerializer(bot_msg).data
-        })
+#         return Response({
+#             "user_message": MessageSerializer(user_msg).data,
+#             "bot_reply": MessageSerializer(bot_msg).data
+#         })
