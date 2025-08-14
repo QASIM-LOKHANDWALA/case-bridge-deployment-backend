@@ -210,6 +210,43 @@ class LawyerCasesView(APIView):
 
         except Exception as e:
             return Response({"error": "Failed to create legal case.", "details": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+class ClientCasesView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+
+        try:
+            client_profile = user.general_profile
+        except GeneralUserProfile.DoesNotExist:
+            return Response({"error": "You are not authorized to view cases."}, status=status.HTTP_403_FORBIDDEN)
+
+        cases = LegalCase.objects.filter(client=client_profile).order_by('-created_at')
+
+        return Response({
+            "cases": [
+                {
+                    "id": case.id,
+                    "title": case.title,
+                    "client": case.client.full_name,
+                    "court": case.court,
+                    "case_number": case.case_number,
+                    "next_hearing": case.next_hearing,
+                    "status": case.status,
+                    "priority": case.priority,
+                    "created_at": case.created_at,
+                    "documents": [
+                        {
+                            "id": doc.id,
+                            "title": doc.title,
+                            "document": request.build_absolute_uri(doc.document.url),
+                            "uploaded_at": doc.uploaded_at
+                        } for doc in case.documents.all()
+                    ]
+                } for case in cases
+            ]
+        }, status=status.HTTP_200_OK)
 
 class UploadCaseDocumentView(APIView):
     permission_classes = [IsAuthenticated]

@@ -7,6 +7,7 @@ urlpatterns = [
     path('clients/<int:lawyer_id>/', views.get_lawyer_clients, name='lawyer-clients'),
     path('appointments/', views.LawyerAppointmentsView.as_view(), name='lawyer-appointments'),
     path('cases/', views.LawyerCasesView.as_view(), name='lawyer-cases'),
+    path('cases/client', views.ClientCasesView.as_view(), name='client-cases'),
     path('cases/<int:case_id>/upload-document/', views.UploadCaseDocumentView.as_view(), name='upload-case-document'),
     path('documents/', views.LawyerDocumentUploadView.as_view(), name='lawyer-document-upload'),
     path('rate/', views.RateLawyerView.as_view(), name='rate-lawyer'),
