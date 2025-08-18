@@ -9,5 +9,5 @@ if [[ $CREATE_SUPERUSER ]]; then
     python manage.py createsuperuser \
       --noinput \
       --email "$DJANGO_SUPERUSER_EMAIL" \
-      --username "$DJANGO_SUPERUSER_USERNAME"
+      --role admin
 fi
