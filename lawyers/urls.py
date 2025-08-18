@@ -13,4 +13,5 @@ urlpatterns = [
     path('rate/', views.RateLawyerView.as_view(), name='rate-lawyer'),
     path('check-lawyer-rating/', views.GetLawyerRatingView.as_view(), name='check-lawyer-rating'),
     path('update-profile/', views.UpdateLawyerProfileView.as_view(), name='update-lawyer-profile'),
+    path('update-case/<int:case_id>/', views.UpdateCaseView.as_view(), name='update-case')
 ]

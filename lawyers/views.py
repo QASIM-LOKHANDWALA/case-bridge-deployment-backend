@@ -14,6 +14,7 @@ from users.serializers import UserSerializer
 from appointments.serializers import CaseAppointmentSerializer
 from rest_framework import status
 from django.utils import timezone
+from datetime import datetime
 from rest_framework.parsers import MultiPartParser, FormParser
 from .serializers import CaseDocumentSerializer
 
@@ -210,6 +211,95 @@ class LawyerCasesView(APIView):
 
         except Exception as e:
             return Response({"error": "Failed to create legal case.", "details": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+class UpdateCaseView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, case_id):
+        user = request.user
+
+        try:
+            lawyer_profile = user.lawyer_profile
+        except LawyerProfile.DoesNotExist:
+            return Response(
+                {"error": "You are not authorized to update cases."}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        try:
+            legal_case = LegalCase.objects.get(id=case_id, lawyer=lawyer_profile)
+        except LegalCase.DoesNotExist:
+            return Response(
+                {"error": "Case not found or you don't have permission to update this case."}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        data = request.data
+        updated_fields = []
+
+        if 'status' in data:
+            valid_statuses = [choice[0] for choice in LegalCase.STATUS_CHOICES]
+            if data['status'] not in valid_statuses:
+                return Response(
+                    {"error": f"Invalid status. Valid options are: {', '.join(valid_statuses)}"}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            legal_case.status = data['status']
+            updated_fields.append('status')
+
+        if 'next_hearing' in data:
+            try:
+                next_hearing_date = datetime.strptime(data['next_hearing'], '%Y-%m-%d').date()
+                legal_case.next_hearing = next_hearing_date
+                updated_fields.append('next_hearing')
+            except ValueError:
+                return Response(
+                    {"error": "Invalid date format for next_hearing. Use YYYY-MM-DD format."}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        if 'priority' in data:
+            valid_priorities = [choice[0] for choice in LegalCase.PRIORITY_CHOICES]
+            if data['priority'] not in valid_priorities:
+                return Response(
+                    {"error": f"Invalid priority. Valid options are: {', '.join(valid_priorities)}"}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            legal_case.priority = data['priority']
+            updated_fields.append('priority')
+
+        if not updated_fields:
+            return Response(
+                {"error": "No valid fields provided for update. Supported fields: status, next_hearing, priority"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            legal_case.last_update = timezone.now()
+            legal_case.save()
+
+            return Response({
+                "message": "Case updated successfully.",
+                "updated_fields": updated_fields,
+                "case": {
+                    "id": legal_case.id,
+                    "title": legal_case.title,
+                    "client": legal_case.client.full_name,
+                    "court": legal_case.court,
+                    "case_number": legal_case.case_number,
+                    "next_hearing": legal_case.next_hearing,
+                    "status": legal_case.status,
+                    "priority": legal_case.priority,
+                    "last_update": legal_case.last_update,
+                    "created_at": legal_case.created_at
+                }
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response(
+                {"error": "Failed to update case.", "details": str(e)}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
         
 class ClientCasesView(APIView):
     permission_classes = [IsAuthenticated]
