@@ -24,7 +24,7 @@ MIDDLEWARE = [
 
 CORS_ALLOWED_ORIGINS = [
     "https://case-bridge-deployment-frontend.onrender.com",
-    "https://casebridge.netlify.app/"
+    "https://casebridge.netlify.app"
 ]
 
 STORAGES = {
