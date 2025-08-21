@@ -9,6 +9,7 @@ from clients.models import GeneralUserProfile
 from lawyers.models import LawyerProfile
 from users.serializers import UserSerializer
 from rest_framework.permissions import IsAuthenticated
+from django.db import transaction
 
 from dotenv import load_dotenv
 import os
@@ -38,50 +39,57 @@ class SignupView(APIView):
             return Response({"error": "Email already registered"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            user = User.objects.create_user(email=email, password=password, role=role)
+            with transaction.atomic():
+                user = User.objects.create_user(email=email, password=password, role=role)
+                
+                if role == "general":
+                    if debug:
+                        print("Creating GeneralUserProfile...")
+
+                    phone_number = data.get("phone_number")
+                    address = data.get("address")
+                    GeneralUserProfile.objects.create(
+                        user=user,
+                        full_name=full_name,
+                        phone_number=phone_number,
+                        address=address,
+                    )
+                elif role == "lawyer":
+                    if debug:
+                        print("Creating LawyerProfile...")
+
+                    bar_reg = data.get("bar_registration_number")
+                    specialization = data.get("specialization")
+                    experience_years = data.get("experience_years")
+                    location = data.get("location")
+                    bio = data.get("bio", "")
+
+                    if LawyerProfile.objects.filter(bar_registration_number=bar_reg).exists():
+                        raise ValueError("Bar registration number already exists")
+
+                    LawyerProfile.objects.create(
+                        user=user,
+                        full_name=full_name,
+                        bar_registration_number=bar_reg,
+                        specialization=specialization,
+                        experience_years=experience_years,
+                        location=location,
+                        bio=bio,
+                    )
+                else:
+                    raise ValueError("Invalid role")
+
+                token, _ = Token.objects.get_or_create(user=user)
+                
+        except ValueError as e:
+            if debug:
+                print("Validation error:", str(e))
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             if debug:
-                print("Error creating user:", str(e))
-            return Response({"error": "User creation failed"}, status=status.HTTP_400_BAD_REQUEST)
-    
-        if role == "general":
-            if debug:
-                print("Creating GeneralUserProfile...")
+                print("Error during signup:", str(e))
+            return Response({"error": "Signup failed"}, status=status.HTTP_400_BAD_REQUEST)
 
-            phone_number = data.get("phone_number")
-            address = data.get("address")
-            GeneralUserProfile.objects.create(
-                user=user,
-                full_name=full_name,
-                phone_number=phone_number,
-                address=address,
-            )
-        elif role == "lawyer":
-            if debug:
-                print("Creating LawyerProfile...")
-
-            bar_reg = data.get("bar_registration_number")
-            specialization = data.get("specialization")
-            experience_years = data.get("experience_years")
-            location = data.get("location")
-            bio = data.get("bio", "")
-
-            if LawyerProfile.objects.filter(bar_registration_number=bar_reg).exists():
-                return Response({"error": "Bar registration number already exists"}, status=status.HTTP_400_BAD_REQUEST)
-
-            LawyerProfile.objects.create(
-                user=user,
-                full_name=full_name,
-                bar_registration_number=bar_reg,
-                specialization=specialization,
-                experience_years=experience_years,
-                location=location,
-                bio=bio,
-            )
-        else:
-            return Response({"error": "Invalid role"}, status=status.HTTP_400_BAD_REQUEST)
-
-        token, _ = Token.objects.get_or_create(user=user)
         serialized_user = UserSerializer(user).data
 
         return Response({
@@ -121,7 +129,6 @@ class LogoutView(APIView):
 
     def post(self, request):
         try:
-            
             if debug:
                 print("Logging out user:", request.user.email)
             request.user.auth_token.delete()
