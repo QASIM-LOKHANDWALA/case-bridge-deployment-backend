@@ -45,14 +45,20 @@ class HireLawyerView(APIView):
 class RespondToHireRequestView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def patch(self, request, hire_id):
+    def patch(self, request, client_id):
         user = request.user
-
+        
         if user.role != 'lawyer':
             return Response({'error': 'Only lawyers can respond to hire requests.'}, status=status.HTTP_403_FORBIDDEN)
 
+        lawyer_profile = user.lawyer_profile
+        client = GeneralUserProfile.objects.get(id=client_id)
+
+        print(lawyer_profile,client)
+
         try:
-            hire = Hire.objects.get(id=hire_id)
+            hire = Hire.objects.filter(lawyer=lawyer_profile, client=client).first()
+            print(hire)
         except Hire.DoesNotExist:
             return Response({'error': 'Hire request not found.'}, status=status.HTTP_404_NOT_FOUND)
 
